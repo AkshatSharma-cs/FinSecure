@@ -1,0 +1,144 @@
+.cards-page { padding: 2rem; max-width: 1200px; margin: 0 auto; }
+.cards-loading { display: flex; justify-content: center; padding: 4rem; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #2d6a9f; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alert { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1.25rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.9rem; }
+.alert button { background: none; border: none; cursor: pointer; font-size: 1rem; opacity: 0.6; }
+.alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+.alert-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+/* Tabs */
+.cards-tabs { display: flex; gap: 0.5rem; margin-bottom: 2rem; background: #f1f5f9; padding: 0.4rem; border-radius: 12px; width: fit-content; }
+.tab-btn { padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; background: transparent; color: #64748b; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; white-space: nowrap; }
+.tab-btn.active { background: white; color: #1a365d; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+.tab-content { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.section-header h2 { margin: 0; font-size: 1.5rem; color: #1a365d; }
+.section-subtitle { color: #64748b; font-size: 0.9rem; }
+
+/* Buttons */
+.btn-primary { background: #2d6a9f; color: white; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; }
+.btn-primary:hover { background: #1a5276; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; padding: 0.65rem 1.4rem; border-radius: 8px; cursor: pointer; font-weight: 500; }
+.btn-danger-sm { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; }
+.btn-danger-sm:hover { background: #fee2e2; }
+.btn-success-sm { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+
+/* Cards Grid */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
+.card-item { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); background: white; }
+
+/* Card Visual */
+.card-visual { padding: 1.5rem; min-height: 160px; position: relative; color: white; display: flex; flex-direction: column; justify-content: space-between; }
+.card-visual-header { display: flex; justify-content: space-between; align-items: center; }
+.card-bank { font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px; }
+.card-number { font-size: 1.15rem; letter-spacing: 3px; font-weight: 500; margin: 0.75rem 0; }
+.card-visual-footer { display: flex; gap: 1.5rem; align-items: flex-end; }
+.card-label { font-size: 0.65rem; opacity: 0.7; text-transform: uppercase; margin-bottom: 2px; }
+.card-value { font-size: 0.85rem; font-weight: 600; }
+.card-type-badge { margin-left: auto; font-size: 0.7rem; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; }
+.card-blocked-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; letter-spacing: 4px; color: #ef4444; }
+
+/* Card Info */
+.card-info { padding: 1rem 1.25rem; }
+.card-limits { margin-bottom: 0.75rem; }
+.limit-labels { display: flex; justify-content: space-between; font-size: 0.8rem; color: #64748b; margin-bottom: 4px; }
+.limit-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.limit-fill { height: 100%; background: linear-gradient(90deg, #16a34a, #4ade80); border-radius: 3px; transition: width 0.5s; }
+.card-perks { font-size: 0.78rem; color: #64748b; margin: 0.5rem 0; font-style: italic; }
+.prepaid-balance { font-weight: 600; color: #065f46; margin-bottom: 0.75rem; }
+.card-actions-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+/* Toggles */
+.card-toggles { display: flex; gap: 1rem; margin: 0.5rem 0; }
+.toggle-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: #374151; cursor: pointer; position: relative; }
+.toggle-label input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-slider { width: 36px; height: 20px; background: #cbd5e1; border-radius: 10px; transition: background 0.2s; position: relative; }
+.toggle-slider::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: white; border-radius: 50%; transition: left 0.2s; }
+.toggle-label input:checked + .toggle-slider { background: #2d6a9f; }
+.toggle-label input:checked + .toggle-slider::after { left: 18px; }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 3rem; color: #94a3b8; }
+.empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+/* Credit Card Schemes */
+.schemes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+.scheme-card { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); position: relative; background: white; }
+.scheme-badge { position: absolute; top: 12px; right: 12px; color: white; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; z-index: 1; }
+.scheme-header { padding: 1.5rem; color: white; text-align: center; }
+.scheme-name { font-size: 1.4rem; font-weight: 700; }
+.scheme-limit { font-size: 1.1rem; margin: 0.4rem 0; opacity: 0.95; }
+.scheme-fee { font-size: 0.8rem; opacity: 0.8; }
+.scheme-body { padding: 1.25rem; }
+.scheme-perks { list-style: none; padding: 0; margin: 0 0 1rem; }
+.scheme-perks li { font-size: 0.85rem; color: #374151; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
+.btn-scheme { width: 100%; background: #2d6a9f; color: white; border: none; padding: 0.7rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+.btn-scheme:hover { background: #1a5276; }
+
+/* Prepaid options */
+.card-type-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+.card-type-option { background: white; border-radius: 16px; padding: 1.75rem; box-shadow: 0 4px 16px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; text-align: center; }
+.cto-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.card-type-option h3 { color: #1a365d; margin: 0 0 0.5rem; }
+.card-type-option p { color: #64748b; font-size: 0.88rem; margin-bottom: 0.75rem; }
+.card-type-option ul { list-style: none; padding: 0; text-align: left; margin: 0 0 1.25rem; }
+.card-type-option ul li { font-size: 0.84rem; color: #374151; padding: 3px 0; }
+
+/* EMI Calculator */
+.emi-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+@media (max-width: 768px) { .emi-layout { grid-template-columns: 1fr; } }
+.emi-calculator { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.emi-calculator h2 { color: #1a365d; margin: 0 0 0.5rem; }
+.emi-subtitle { color: #64748b; font-size: 0.88rem; margin-bottom: 1.5rem; }
+.emi-form { display: flex; flex-direction: column; gap: 1.25rem; }
+.emi-field label { display: block; font-weight: 600; color: #374151; margin-bottom: 0.5rem; font-size: 0.9rem; }
+.emi-field input[type="number"] { width: 100%; padding: 0.65rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+.emi-field input[type="number"]:focus { outline: none; border-color: #2d6a9f; }
+.emi-field input[type="range"] { width: 100%; accent-color: #2d6a9f; }
+.range-labels { display: flex; justify-content: space-between; font-size: 0.78rem; color: #94a3b8; }
+.tenure-options { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.tenure-btn { padding: 0.4rem 0.9rem; border: 1.5px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: white; font-size: 0.85rem; transition: all 0.2s; }
+.tenure-btn.active { border-color: #2d6a9f; background: #eff6ff; color: #2d6a9f; font-weight: 600; }
+.btn-calc { margin-top: 0.5rem; width: 100%; }
+.emi-result { margin-top: 1.5rem; background: linear-gradient(135deg, #1a365d, #2d6a9f); border-radius: 12px; padding: 1.5rem; color: white; }
+.emi-result-main { text-align: center; margin-bottom: 1.25rem; }
+.emi-label { display: block; font-size: 0.8rem; opacity: 0.8; margin-bottom: 4px; }
+.emi-value { display: block; font-size: 2.2rem; font-weight: 700; }
+.emi-breakdown { display: flex; flex-direction: column; gap: 0.6rem; }
+.emi-breakdown-item { display: flex; justify-content: space-between; font-size: 0.88rem; opacity: 0.9; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.emi-breakdown-item.total { opacity: 1; font-weight: 700; font-size: 0.95rem; border-bottom: none; }
+.interest-amount { color: #fbbf24; }
+
+.emi-info { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.emi-info h3 { color: #1a365d; margin: 0 0 1rem; }
+.emi-rates-table { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 1.5rem; }
+.emi-rate-row { display: grid; grid-template-columns: 2fr 1fr 1fr; padding: 0.6rem 0.9rem; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; }
+.emi-rate-row.header { background: #f8fafc; font-weight: 600; color: #374151; font-size: 0.78rem; text-transform: uppercase; }
+.emi-rate-row:last-child { border-bottom: none; }
+.emi-offers h4 { color: #374151; margin: 0 0 0.75rem; }
+.offer-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.85rem; color: #1d4ed8; margin-bottom: 0.6rem; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal { background: white; border-radius: 16px; padding: 2rem; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal h3 { margin: 0 0 1.25rem; color: #1a365d; }
+.modal-field { margin-bottom: 1rem; }
+.modal-field label { display: block; font-weight: 600; color: #374151; margin-bottom: 0.4rem; font-size: 0.9rem; }
+.modal-field select, .modal-field input { width: 100%; padding: 0.65rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
+.modal-field select:focus, .modal-field input:focus { outline: none; border-color: #2d6a9f; }
+.modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+.modal-scheme-info { margin-bottom: 1.25rem; }
+.scheme-mini { padding: 1rem 1.25rem; border-radius: 10px; }
+.variant-options { display: flex; gap: 0.75rem; }
+.variant-opt { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+.variant-opt.active { border-color: #2d6a9f; background: #eff6ff; color: #2d6a9f; font-weight: 600; }
+.variant-opt input { display: none; }
+.status-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+.status-tag.active { background: #dcfce7; color: #16a34a; }
+.status-tag.blocked { background: #fef2f2; color: #dc2626; }

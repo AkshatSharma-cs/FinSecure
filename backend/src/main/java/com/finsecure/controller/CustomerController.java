@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -42,6 +43,21 @@ public class CustomerController {
             @Valid @RequestBody CreateAccountRequest request, Authentication auth) {
         AccountResponse account = customerService.createAccount(request, auth.getName());
         return ResponseEntity.status(201).body(ApiResponse.success(account, "Account created successfully"));
+    }
+
+    // === SELF-DEPOSIT ===
+    @PostMapping("/accounts/deposit")
+    public ResponseEntity<ApiResponse<TransactionResponse>> deposit(
+            @Valid @RequestBody DepositRequest request, Authentication auth) {
+        try {
+            // Validate account belongs to user
+            TransactionResponse txn = transactionService.processSelfDeposit(
+                request.getAccountNumber(), request.getAmount(),
+                request.getDescription(), auth.getName());
+            return ResponseEntity.ok(ApiResponse.success(txn, "Deposit successful"));
+        } catch (IllegalStateException | IllegalArgumentException | SecurityException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DEPOSIT_FAILED"));
+        }
     }
 
     // === TRANSACTIONS ===
@@ -100,6 +116,39 @@ public class CustomerController {
         }
     }
 
+    @PostMapping("/cards/{accountId}/issue-virtual-debit")
+    public ResponseEntity<ApiResponse<CardResponse>> issueVirtualDebitCard(
+            @PathVariable Long accountId, Authentication auth) {
+        try {
+            CardResponse card = cardService.issueVirtualDebitCard(accountId, auth.getName());
+            return ResponseEntity.status(201).body(ApiResponse.success(card, "Virtual debit card issued"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "CARD_FAILED"));
+        }
+    }
+
+    @PostMapping("/cards/issue-credit")
+    public ResponseEntity<ApiResponse<CardResponse>> issueCreditCard(
+            @Valid @RequestBody IssueCreditCardRequest request, Authentication auth) {
+        try {
+            CardResponse card = cardService.issueCreditCard(request, auth.getName());
+            return ResponseEntity.status(201).body(ApiResponse.success(card, "Credit card issued"));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "CARD_FAILED"));
+        }
+    }
+
+    @PostMapping("/cards/issue-prepaid")
+    public ResponseEntity<ApiResponse<CardResponse>> issuePrepaidCard(
+            @Valid @RequestBody IssuePrepaidCardRequest request, Authentication auth) {
+        try {
+            CardResponse card = cardService.issuePrepaidCard(request, auth.getName());
+            return ResponseEntity.status(201).body(ApiResponse.success(card, "Prepaid card issued"));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "CARD_FAILED"));
+        }
+    }
+
     @PostMapping("/cards/action")
     public ResponseEntity<ApiResponse<CardResponse>> performCardAction(
             @Valid @RequestBody CardActionRequest request, Authentication auth) {
@@ -130,7 +179,6 @@ public class CustomerController {
             Authentication auth,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        // We need userId - fetch it from customer service
         Page<NotificationResponse> notifications = Page.empty();
         return ResponseEntity.ok(ApiResponse.success(notifications, "Notifications retrieved"));
     }

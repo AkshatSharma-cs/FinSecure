@@ -143,3 +143,49 @@
 
 .kyc-banner-text { font-size: 14px; color: #744210; }
 .kyc-banner-text strong { font-weight: 700; }
+
+/* ── New additions ───────────────────────────────────────────── */
+.dashboard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.dashboard-top .page-title { margin-bottom: 0; }
+.btn-deposit { background: linear-gradient(135deg, #2d6a9f, #1a365d); color: white; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: opacity 0.2s; }
+.btn-deposit:hover { opacity: 0.9; }
+.btn-deposit-mini { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-size: 12px; }
+.btn-deposit-mini:hover { background: #16a34a; color: white; }
+
+.success-msg { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 8px; padding: 0.75rem 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; }
+.error-msg { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1.25rem; margin-bottom: 1rem; }
+
+/* Rotating Banner Carousel */
+.banner-carousel { border-radius: 16px; overflow: hidden; margin-bottom: 2rem; position: relative; min-height: 120px; padding: 1.5rem 2rem 2.5rem; transition: background 0.5s ease; }
+.banner-content { display: flex; align-items: center; gap: 1.5rem; }
+.banner-icon { font-size: 3rem; flex-shrink: 0; }
+.banner-text { flex: 1; color: white; }
+.banner-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.3rem; }
+.banner-subtitle { font-size: 0.9rem; opacity: 0.85; }
+.banner-cta { padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; text-decoration: none; font-size: 0.88rem; white-space: nowrap; flex-shrink: 0; transition: opacity 0.2s; }
+.banner-cta:hover { opacity: 0.85; }
+.banner-dots { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.banner-dot { width: 8px; height: 8px; border-radius: 50%; border: none; cursor: pointer; background: rgba(255,255,255,0.4); padding: 0; transition: all 0.2s; }
+.banner-dot.active { background: white; width: 24px; border-radius: 4px; }
+.banner-progress { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.2); }
+.banner-progress-bar { height: 100%; background: rgba(255,255,255,0.7); animation: progress 4s linear forwards; }
+@keyframes progress { from { width: 0%; } to { width: 100%; } }
+
+/* Quick Links */
+.quick-links { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+.quick-link-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.75rem 1.5rem; text-decoration: none; color: #1a365d; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.quick-link-card:hover { background: #1a365d; color: white; transform: translateY(-2px); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+.modal-box { background: white; border-radius: 16px; padding: 2rem; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-box h3 { margin: 0 0 1.25rem; color: #1a365d; font-size: 1.2rem; }
+.modal-field { margin-bottom: 1rem; }
+.modal-field label { display: block; font-weight: 600; color: #374151; margin-bottom: 0.4rem; font-size: 0.9rem; }
+.modal-field select, .modal-field input { width: 100%; padding: 0.65rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
+.modal-field select:focus, .modal-field input:focus { outline: none; border-color: #2d6a9f; }
+.modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+.btn-primary { background: #2d6a9f; color: white; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; }
+.btn-primary:hover { background: #1a5276; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; padding: 0.65rem 1.4rem; border-radius: 8px; cursor: pointer; font-weight: 500; }

@@ -13,6 +13,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import com.finsecure.dto.DepositRequest;
+import com.finsecure.dto.TransactionResponse;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -91,4 +94,17 @@ public class EmployeeController {
         );
         return ResponseEntity.ok(ApiResponse.success(data, "Dashboard loaded"));
     }
+
+    // === DEPOSIT ===
+    @PostMapping("/customers/deposit")
+    public ResponseEntity<ApiResponse<TransactionResponse>> depositToAccount(
+            @Valid @RequestBody DepositRequest request, Authentication auth) {
+        try {
+            TransactionResponse txn = employeeService.depositToCustomerAccount(request, auth.getName());
+            return ResponseEntity.ok(ApiResponse.success(txn, "Deposit of ₹" + request.getAmount() + " successful"));
+        } catch (IllegalArgumentException | SecurityException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DEPOSIT_FAILED"));
+        }
+    }
+
 }

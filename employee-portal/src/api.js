@@ -33,6 +33,7 @@ export const employeeAPI = {
   verifyKyc: (data) => api.post('/employee/kyc/verify', data),
   getPendingLoans: (page = 0) => api.get(`/employee/loans/pending?page=${page}&size=20`),
   reviewLoan: (loanId, action, rejectionReason) => api.post(`/employee/loans/${loanId}/review`, { action, rejectionReason }),
+  depositToAccount: (data) => api.post('/employee/customers/deposit', data),
 };
 
 export default api;

@@ -3,6 +3,8 @@ package com.finsecure.service;
 import com.finsecure.dto.*;
 import com.finsecure.entity.*;
 import com.finsecure.repository.*;
+import com.finsecure.dto.DepositRequest;
+import com.finsecure.dto.TransactionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,7 @@ public class EmployeeService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final AuditService auditService;
+    private final TransactionService transactionService;
 
     @Transactional(readOnly = true)
     public Page<CustomerProfileResponse> getAllCustomers(Pageable pageable) {
@@ -66,7 +69,7 @@ public class EmployeeService {
             long approvedDocs = kycDocumentRepository.countByCustomerIdAndStatus(
                 customer.getId(), KycDocument.DocumentStatus.APPROVED);
 
-            if (approvedDocs >= 2) {
+            if (approvedDocs >= 1) {
                 customer.setKycStatus(Customer.KycStatus.APPROVED);
                 customerRepository.save(customer);
                 notificationService.sendKycNotification(customer.getUser().getId(), "APPROVED");
@@ -174,4 +177,20 @@ public class EmployeeService {
             .createdAt(loan.getCreatedAt())
             .build();
     }
+
+    @Transactional
+    public TransactionResponse depositToCustomerAccount(DepositRequest request, String employeeEmail) {
+        // Verify employee exists
+        employeeRepository.findAll().stream()
+            .filter(e -> e.getUser().getEmail().equals(employeeEmail))
+            .findFirst()
+            .orElseThrow(() -> new SecurityException("Employee not found"));
+
+        return transactionService.processDeposit(
+            request.getAccountNumber(),
+            request.getAmount(),
+            request.getDescription() != null ? request.getDescription() : "Cash deposit by employee"
+        );
+    }
+
 }

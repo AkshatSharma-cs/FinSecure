@@ -31,6 +31,14 @@ public class Card {
     @Column(nullable = false, length = 20)
     private CardType cardType;
 
+    @Column(length = 20)
+    @Builder.Default
+    private String scheme = "CLASSIC"; // CLASSIC, GOLD, PLATINUM, SIGNATURE
+
+    @Column(length = 20)
+    @Builder.Default
+    private String variant = "REGULAR"; // REGULAR, VIRTUAL
+
     @Column(nullable = false, length = 20)
     private String maskedCardNumber;
 
@@ -58,6 +66,10 @@ public class Card {
     @Builder.Default
     private BigDecimal availableLimit = BigDecimal.ZERO;
 
+    @Column(precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal prepaidBalance = BigDecimal.ZERO;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean internationalEnabled = false;
@@ -69,6 +81,13 @@ public class Card {
     @Column(nullable = false)
     @Builder.Default
     private Boolean contactlessEnabled = true;
+
+    @Column
+    @Builder.Default
+    private Integer annualFee = 0;
+
+    @Column(length = 500)
+    private String perks;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

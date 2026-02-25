@@ -1,13 +1,13 @@
 package com.finsecure.service;
 
-import com.finsecure.dto.CardActionRequest;
-import com.finsecure.dto.CardResponse;
+import com.finsecure.dto.*;
 import com.finsecure.entity.*;
 import com.finsecure.entity.Card.CardStatus;
 import com.finsecure.entity.Card.CardType;
 import com.finsecure.repository.AccountRepository;
 import com.finsecure.repository.CardRepository;
 import com.finsecure.repository.CustomerRepository;
+import com.finsecure.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,8 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,109 +31,165 @@ public class CardService {
 
     private final BCryptPasswordEncoder cvvEncoder = new BCryptPasswordEncoder();
 
+    // ─── Credit Card Schemes ───────────────────────────────────────────────────
+    private static final Map<String, BigDecimal> CREDIT_LIMITS = Map.of(
+        "CLASSIC",   BigDecimal.valueOf(50000),
+        "GOLD",      BigDecimal.valueOf(100000),
+        "PLATINUM",  BigDecimal.valueOf(300000),
+        "SIGNATURE", BigDecimal.valueOf(1000000)
+    );
+    private static final Map<String, Integer> ANNUAL_FEES = Map.of(
+        "CLASSIC",   0,
+        "GOLD",      500,
+        "PLATINUM",  1000,
+        "SIGNATURE", 2500
+    );
+    private static final Map<String, String> PERKS = Map.of(
+        "CLASSIC",   "1% cashback on all spends. Zero joining fee.",
+        "GOLD",      "2% cashback + 2x rewards on dining & fuel. ₹500/year.",
+        "PLATINUM",  "3x rewards + lounge access (4/year) + travel insurance. ₹1000/year.",
+        "SIGNATURE", "5x rewards + unlimited lounge + concierge + golf. ₹2500/year."
+    );
+
+    // ─── Debit Card ────────────────────────────────────────────────────────────
     @Transactional
     public CardResponse issueDebitCard(Long accountId, String userEmail) {
-        Account account = accountRepository.findById(accountId)
-            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        Account account = getOwnedAccount(accountId, userEmail);
 
-        if (!account.getCustomer().getUser().getEmail().equals(userEmail)) {
-            throw new SecurityException("Unauthorized");
-        }
-
-        if (account.getStatus() != Account.AccountStatus.ACTIVE) {
+        if (account.getStatus() != Account.AccountStatus.ACTIVE)
             throw new IllegalStateException("Account must be active to issue a card");
-        }
-
-        // Check KYC
-        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED) {
+        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED)
             throw new IllegalStateException("KYC must be approved to issue a card");
-        }
-
-        if (cardRepository.existsByAccountIdAndCardType(accountId, CardType.DEBIT)) {
+        if (cardRepository.existsByAccountIdAndCardTypeAndVariant(accountId, CardType.DEBIT, "REGULAR"))
             throw new IllegalStateException("A debit card already exists for this account");
-        }
 
-        String cardNumber = generateCardNumber();
-        String cvv = generateCvv();
-
-        Card card = Card.builder()
-            .account(account)
-            .cardType(CardType.DEBIT)
-            .maskedCardNumber(maskCardNumber(cardNumber))
-            .cardNumberHash(cvvEncoder.encode(cardNumber))
-            .cardHolderName(account.getCustomer().getFirstName() + " " + account.getCustomer().getLastName())
-            .expiryDate(LocalDate.now().plusYears(5))
-            .cvvHash(cvvEncoder.encode(cvv))
-            .status(CardStatus.ACTIVE)
-            .build();
-
+        Card card = buildCard(account, CardType.DEBIT, "STANDARD", "REGULAR",
+                null, null, 0, "Contactless payments + UPI linked");
         card = cardRepository.save(card);
 
         notificationService.createNotification(
             account.getCustomer().getUser().getId(),
-            com.finsecure.entity.Notification.NotificationType.CARD,
+            Notification.NotificationType.CARD,
             "Debit Card Issued",
-            "Your debit card " + card.getMaskedCardNumber() + " has been issued successfully.",
+            "Your debit card " + card.getMaskedCardNumber() + " has been issued.",
             card.getId().toString(), "CARD"
         );
-
         return mapToResponse(card);
     }
 
+    // ─── Debit Virtual Card ────────────────────────────────────────────────────
     @Transactional
-    public CardResponse issueCreditCard(Long accountId, BigDecimal creditLimit, String userEmail) {
-        Account account = accountRepository.findById(accountId)
-            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+    public CardResponse issueVirtualDebitCard(Long accountId, String userEmail) {
+        Account account = getOwnedAccount(accountId, userEmail);
 
-        if (!account.getCustomer().getUser().getEmail().equals(userEmail)) {
-            throw new SecurityException("Unauthorized");
-        }
+        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED)
+            throw new IllegalStateException("KYC must be approved to issue a virtual card");
+        if (cardRepository.existsByAccountIdAndCardTypeAndVariant(accountId, CardType.DEBIT, "VIRTUAL"))
+            throw new IllegalStateException("A virtual debit card already exists for this account");
 
-        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED) {
-            throw new IllegalStateException("KYC must be approved to issue a credit card");
-        }
-
-        String cardNumber = generateCardNumber();
-        String cvv = generateCvv();
-
-        Card card = Card.builder()
-            .account(account)
-            .cardType(CardType.CREDIT)
-            .maskedCardNumber(maskCardNumber(cardNumber))
-            .cardNumberHash(cvvEncoder.encode(cardNumber))
-            .cardHolderName(account.getCustomer().getFirstName() + " " + account.getCustomer().getLastName())
-            .expiryDate(LocalDate.now().plusYears(5))
-            .cvvHash(cvvEncoder.encode(cvv))
-            .status(CardStatus.ACTIVE)
-            .creditLimit(creditLimit)
-            .availableLimit(creditLimit)
-            .build();
-
+        Card card = buildCard(account, CardType.DEBIT, "STANDARD", "VIRTUAL",
+                null, null, 0, "Online-only virtual card. No physical card issued.");
+        card.setContactlessEnabled(false);
         card = cardRepository.save(card);
+
+        notificationService.createNotification(
+            account.getCustomer().getUser().getId(),
+            Notification.NotificationType.CARD,
+            "Virtual Debit Card Issued",
+            "Your virtual debit card " + card.getMaskedCardNumber() + " is ready for online use.",
+            card.getId().toString(), "CARD"
+        );
         return mapToResponse(card);
     }
 
+    // ─── Credit Card ───────────────────────────────────────────────────────────
+    @Transactional
+    public CardResponse issueCreditCard(IssueCreditCardRequest request, String userEmail) {
+        Account account = getOwnedAccount(request.getAccountId(), userEmail);
+
+        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED)
+            throw new IllegalStateException("KYC must be approved to issue a credit card");
+
+        String scheme = request.getScheme().toUpperCase();
+        String variant = request.getVariant().toUpperCase();
+
+        if (!CREDIT_LIMITS.containsKey(scheme))
+            throw new IllegalArgumentException("Invalid scheme. Choose: CLASSIC, GOLD, PLATINUM, SIGNATURE");
+
+        // Only one credit card per scheme per account
+        if (cardRepository.existsByAccountIdAndCardTypeAndScheme(account.getId(), CardType.CREDIT, scheme))
+            throw new IllegalStateException("You already have a " + scheme + " credit card");
+
+        BigDecimal limit = CREDIT_LIMITS.get(scheme);
+        int annualFee = ANNUAL_FEES.get(scheme);
+        String perks = PERKS.get(scheme);
+
+        Card card = buildCard(account, CardType.CREDIT, scheme, variant, limit, limit, annualFee, perks);
+        if ("VIRTUAL".equals(variant)) card.setContactlessEnabled(false);
+        card = cardRepository.save(card);
+
+        notificationService.createNotification(
+            account.getCustomer().getUser().getId(),
+            Notification.NotificationType.CARD,
+            scheme + " Credit Card Issued",
+            "Your " + scheme + " credit card with ₹" + limit + " limit is ready.",
+            card.getId().toString(), "CARD"
+        );
+        return mapToResponse(card);
+    }
+
+    // ─── Prepaid Card ──────────────────────────────────────────────────────────
+    @Transactional
+    public CardResponse issuePrepaidCard(IssuePrepaidCardRequest request, String userEmail) {
+        Account account = getOwnedAccount(request.getAccountId(), userEmail);
+
+        if (account.getCustomer().getKycStatus() != Customer.KycStatus.APPROVED)
+            throw new IllegalStateException("KYC must be approved to issue a prepaid card");
+        if (account.getBalance().compareTo(request.getLoadAmount()) < 0)
+            throw new IllegalStateException("Insufficient balance to load prepaid card");
+
+        String variant = request.getVariant().toUpperCase();
+
+        // Deduct from account
+        account.setBalance(account.getBalance().subtract(request.getLoadAmount()));
+        accountRepository.save(account);
+
+        Card card = buildCard(account, CardType.PREPAID, "PREPAID", variant,
+                null, null, 0, "Reloadable prepaid card. Use anywhere Visa is accepted.");
+        card.setPrepaidBalance(request.getLoadAmount());
+        if ("VIRTUAL".equals(variant)) card.setContactlessEnabled(false);
+        card = cardRepository.save(card);
+
+        notificationService.createNotification(
+            account.getCustomer().getUser().getId(),
+            Notification.NotificationType.CARD,
+            "Prepaid Card Issued",
+            "Your prepaid card loaded with ₹" + request.getLoadAmount() + " is ready.",
+            card.getId().toString(), "CARD"
+        );
+        return mapToResponse(card);
+    }
+
+    // ─── Card Actions ──────────────────────────────────────────────────────────
     @Transactional
     public CardResponse performCardAction(CardActionRequest request, String userEmail) {
         Card card = cardRepository.findById(request.getCardId())
             .orElseThrow(() -> new IllegalArgumentException("Card not found"));
 
-        if (!card.getAccount().getCustomer().getUser().getEmail().equals(userEmail)) {
+        if (!card.getAccount().getCustomer().getUser().getEmail().equals(userEmail))
             throw new SecurityException("Unauthorized");
-        }
 
         switch (request.getAction().toUpperCase()) {
-            case "BLOCK" -> card.setStatus(CardStatus.BLOCKED);
-            case "UNBLOCK" -> {
-                if (card.getStatus() != CardStatus.BLOCKED) {
+            case "BLOCK"              -> card.setStatus(CardStatus.BLOCKED);
+            case "UNBLOCK"            -> {
+                if (card.getStatus() != CardStatus.BLOCKED)
                     throw new IllegalStateException("Card is not blocked");
-                }
                 card.setStatus(CardStatus.ACTIVE);
             }
-            case "ENABLE_INTERNATIONAL" -> card.setInternationalEnabled(true);
+            case "ENABLE_INTERNATIONAL"  -> card.setInternationalEnabled(true);
             case "DISABLE_INTERNATIONAL" -> card.setInternationalEnabled(false);
-            case "ENABLE_ONLINE" -> card.setOnlineEnabled(true);
-            case "DISABLE_ONLINE" -> card.setOnlineEnabled(false);
+            case "ENABLE_ONLINE"         -> card.setOnlineEnabled(true);
+            case "DISABLE_ONLINE"        -> card.setOnlineEnabled(false);
             default -> throw new IllegalArgumentException("Unknown card action: " + request.getAction());
         }
 
@@ -142,15 +197,15 @@ public class CardService {
 
         notificationService.createNotification(
             card.getAccount().getCustomer().getUser().getId(),
-            com.finsecure.entity.Notification.NotificationType.CARD,
+            Notification.NotificationType.CARD,
             "Card Updated",
-            "Card action " + request.getAction() + " performed on card " + card.getMaskedCardNumber(),
+            "Card action " + request.getAction() + " performed on " + card.getMaskedCardNumber(),
             card.getId().toString(), "CARD"
         );
-
         return mapToResponse(card);
     }
 
+    // ─── Get Cards ─────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<CardResponse> getCustomerCards(String userEmail) {
         Customer customer = customerRepository.findByUserEmail(userEmail)
@@ -159,18 +214,47 @@ public class CardService {
             .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    // ─── Helpers ───────────────────────────────────────────────────────────────
+    private Account getOwnedAccount(Long accountId, String userEmail) {
+        Account account = accountRepository.findById(accountId)
+            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (!account.getCustomer().getUser().getEmail().equals(userEmail))
+            throw new SecurityException("Unauthorized");
+        return account;
+    }
+
+    private Card buildCard(Account account, CardType type, String scheme, String variant,
+                            BigDecimal creditLimit, BigDecimal availableLimit,
+                            int annualFee, String perks) {
+        String cardNumber = generateCardNumber();
+        String cvv = generateCvv();
+        return Card.builder()
+            .account(account)
+            .cardType(type)
+            .scheme(scheme)
+            .variant(variant)
+            .maskedCardNumber(maskCardNumber(cardNumber))
+            .cardNumberHash(cvvEncoder.encode(cardNumber))
+            .cardHolderName(account.getCustomer().getFirstName() + " " + account.getCustomer().getLastName())
+            .expiryDate(LocalDate.now().plusYears(5))
+            .cvvHash(cvvEncoder.encode(cvv))
+            .status(CardStatus.ACTIVE)
+            .creditLimit(creditLimit)
+            .availableLimit(availableLimit != null ? availableLimit : BigDecimal.ZERO)
+            .annualFee(annualFee)
+            .perks(perks)
+            .build();
+    }
+
     private String generateCardNumber() {
         Random random = new Random();
-        StringBuilder sb = new StringBuilder("4"); // Visa prefix
-        for (int i = 0; i < 15; i++) {
-            sb.append(random.nextInt(10));
-        }
+        StringBuilder sb = new StringBuilder("4");
+        for (int i = 0; i < 15; i++) sb.append(random.nextInt(10));
         return sb.toString();
     }
 
     private String generateCvv() {
-        Random random = new Random();
-        return String.format("%03d", random.nextInt(1000));
+        return String.format("%03d", new Random().nextInt(1000));
     }
 
     private String maskCardNumber(String cardNumber) {
@@ -182,15 +266,20 @@ public class CardService {
             .id(card.getId())
             .accountNumber(card.getAccount().getAccountNumber())
             .cardType(card.getCardType())
+            .scheme(card.getScheme())
+            .variant(card.getVariant())
             .maskedCardNumber(card.getMaskedCardNumber())
             .cardHolderName(card.getCardHolderName())
             .expiryDate(card.getExpiryDate())
             .status(card.getStatus())
             .creditLimit(card.getCreditLimit())
             .availableLimit(card.getAvailableLimit())
+            .prepaidBalance(card.getPrepaidBalance())
             .internationalEnabled(card.getInternationalEnabled())
             .onlineEnabled(card.getOnlineEnabled())
             .contactlessEnabled(card.getContactlessEnabled())
+            .annualFee(card.getAnnualFee())
+            .perks(card.getPerks())
             .createdAt(card.getCreatedAt())
             .build();
     }

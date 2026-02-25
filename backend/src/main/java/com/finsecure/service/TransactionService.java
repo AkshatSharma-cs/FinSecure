@@ -179,4 +179,20 @@ public class TransactionService {
             .createdAt(txn.getCreatedAt())
             .build();
     }
+
+    @Transactional
+    public TransactionResponse processSelfDeposit(String accountNumber, java.math.BigDecimal amount,
+                                                   String description, String userEmail) {
+        Account account = accountRepository.findByAccountNumber(accountNumber)
+            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+        if (!account.getCustomer().getUser().getEmail().equals(userEmail))
+            throw new SecurityException("Account does not belong to you");
+
+        if (account.getStatus() != Account.AccountStatus.ACTIVE)
+            throw new IllegalStateException("Account is not active");
+
+        return processDeposit(accountNumber, amount, description != null ? description : "Self deposit");
+    }
+
 }
