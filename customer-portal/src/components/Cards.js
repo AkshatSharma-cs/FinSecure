@@ -109,16 +109,17 @@ export default function Cards() {
       {success && <div className="alert alert-success">{success}<button onClick={() => setSuccess('')}>✕</button></div>}
 
       <div className="cards-tabs">
-        {[['my-cards','🪙 My Cards'],['credit-cards','💳 Credit Cards'],['prepaid','🎁 Prepaid & Virtual'],['emi','📊 EMI Calculator']].map(([id,label]) => (
-          <button key={id} className={`tab-btn ${activeTab === id ? 'active' : ''}`} onClick={() => setActiveTab(id)}>{label}</button>
-        ))}
+        <button className={`tab-btn ${activeTab === 'my-cards' ? 'active' : ''}`} onClick={() => setActiveTab('my-cards')}>💼 My Cards</button>
+        <button className="tab-btn issue-debit-tab" onClick={() => { setSelectedVariant('REGULAR'); setShowDebitModal(true); }}>📩 Issue Debit Card</button>
+        <button className={`tab-btn ${activeTab === 'credit-cards' ? 'active' : ''}`} onClick={() => setActiveTab('credit-cards')}>💳 Credit Cards</button>
+        <button className={`tab-btn ${activeTab === 'prepaid' ? 'active' : ''}`} onClick={() => setActiveTab('prepaid')}>🎁 Prepaid & Virtual</button>
+        <button className={`tab-btn ${activeTab === 'emi' ? 'active' : ''}`} onClick={() => setActiveTab('emi')}>📊 EMI Calculator</button>
       </div>
 
       {activeTab === 'my-cards' && (
         <div className="tab-content">
           <div className="section-header">
             <h2>My Cards</h2>
-            <button className="btn-primary" onClick={() => { setSelectedVariant('REGULAR'); setShowDebitModal(true); }}>+ Issue Debit Card</button>
           </div>
           {cards.length === 0 ? (
             <div className="empty-state"><div className="empty-icon">💳</div><p>No cards yet. Issue your first card!</p></div>
