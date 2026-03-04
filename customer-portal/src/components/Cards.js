@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Header from './Header';
 import { customerAPI } from '../api';
 import './Cards.css';
 
@@ -101,6 +102,8 @@ export default function Cards() {
   if (loading) return <div className="cards-loading"><div className="spinner" /></div>;
 
   return (
+    <>
+    <Header />
     <div className="cards-page">
       {error && <div className="alert alert-error">{error}<button onClick={() => setError('')}>✕</button></div>}
       {success && <div className="alert alert-success">{success}<button onClick={() => setSuccess('')}>✕</button></div>}
@@ -366,5 +369,6 @@ export default function Cards() {
         </div>
       )}
     </div>
+    </>
   );
 }
