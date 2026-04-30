@@ -24,3 +24,24 @@ npm-debug.log yarn-debug.log yarn-error.log*
 Temporary Files
 
 .tmp .temp
+
+# Backend
+backend/target/
+
+# Frontend
+customer-portal/node_modules/
+employee-portal/node_modules/
+customer-portal/build/
+employee-portal/build/
+
+# Sensitive
+backend/src/main/resources/application.properties
+
+# Misc
+mnt/
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+tempCodeRunnerFile.exe

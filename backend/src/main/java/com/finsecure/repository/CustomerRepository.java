@@ -30,6 +30,9 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Query("SELECT c FROM Customer c WHERE LOWER(c.firstName) LIKE LOWER(CONCAT('%',:name,'%')) OR LOWER(c.lastName) LIKE LOWER(CONCAT('%',:name,'%'))")
     Page<Customer> searchByName(String name, Pageable pageable);
 
+    @Query("SELECT c FROM Customer c INNER JOIN Account a ON a.customer.id = c.id WHERE a.accountNumber = :accountNumber")
+    Optional<Customer> findByAccountNumber(String accountNumber);
+
     boolean existsByPanNumber(String panNumber);
 
     boolean existsByAadharNumber(String aadharNumber);

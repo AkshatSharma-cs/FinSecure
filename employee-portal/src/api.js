@@ -28,12 +28,17 @@ export const authAPI = {
 
 export const employeeAPI = {
   getDashboard: () => api.get('/employee/dashboard'),
-  getCustomers: (page = 0, search = '') => api.get(`/employee/customers?page=${page}&size=20${search ? '&search=' + search : ''}`),
+  getCustomers: (page = 0, search = '', sort = 'createdAt', dir = 'desc') => api.get(`/employee/customers?page=${page}&size=20&sort=${sort}&dir=${dir}${search ? '&search=' + search : ''}`),
+  getCustomerByAccount: (accountNumber) => api.get(`/employee/customers/by-account?accountNumber=${accountNumber}`),
   getPendingKyc: (page = 0) => api.get(`/employee/kyc/pending?page=${page}&size=20`),
   verifyKyc: (data) => api.post('/employee/kyc/verify', data),
   getPendingLoans: (page = 0) => api.get(`/employee/loans/pending?page=${page}&size=20`),
   reviewLoan: (loanId, action, rejectionReason) => api.post(`/employee/loans/${loanId}/review`, { action, rejectionReason }),
   depositToAccount: (data) => api.post('/employee/customers/deposit', data),
+  // Admin only
+  getAllEmployees: () => api.get('/employee/list'),
+  createEmployee: (data) => api.post('/employee/create', data),
+  deleteEmployee: (id) => api.delete(`/employee/${id}`),
 };
 
 export default api;

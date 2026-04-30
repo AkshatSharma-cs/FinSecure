@@ -12,10 +12,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import com.finsecure.dto.DepositRequest;
 import com.finsecure.dto.TransactionResponse;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -30,14 +30,26 @@ public class EmployeeController {
     public ResponseEntity<ApiResponse<Page<CustomerProfileResponse>>> getAllCustomers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String search) {
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "desc") String dir) {
 
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Sort.Direction direction = dir.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortField = sort.equals("firstName") ? "firstName" : sort.equals("kycStatus") ? "kycStatus" : "createdAt";
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+
         Page<CustomerProfileResponse> customers = search != null && !search.isBlank()
             ? employeeService.searchCustomers(search, pageable)
             : employeeService.getAllCustomers(pageable);
 
         return ResponseEntity.ok(ApiResponse.success(customers, "Customers retrieved"));
+    }
+
+    @GetMapping("/customers/by-account")
+    public ResponseEntity<ApiResponse<List<CustomerProfileResponse>>> getCustomerByAccount(
+            @RequestParam String accountNumber) {
+        List<CustomerProfileResponse> result = employeeService.searchByAccountNumber(accountNumber);
+        return ResponseEntity.ok(ApiResponse.success(result, "Customer retrieved"));
     }
 
     // === KYC ===
@@ -104,6 +116,42 @@ public class EmployeeController {
             return ResponseEntity.ok(ApiResponse.success(txn, "Deposit of ₹" + request.getAmount() + " successful"));
         } catch (IllegalArgumentException | SecurityException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DEPOSIT_FAILED"));
+        }
+    }
+
+    // === ADMIN ONLY: EMPLOYEE MANAGEMENT ===
+    @GetMapping("/list")
+    public ResponseEntity<ApiResponse<List<EmployeeResponse>>> getAllEmployees(Authentication auth) {
+        if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied", "FORBIDDEN"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(employeeService.getAllEmployees(), "Employees retrieved"));
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<ApiResponse<EmployeeResponse>> createEmployee(
+            @Valid @RequestBody CreateEmployeeRequest request, Authentication auth) {
+        if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied", "FORBIDDEN"));
+        }
+        try {
+            EmployeeResponse emp = employeeService.createEmployee(request);
+            return ResponseEntity.ok(ApiResponse.success(emp, "Employee created successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "CREATE_FAILED"));
+        }
+    }
+
+    @DeleteMapping("/{employeeId}")
+    public ResponseEntity<ApiResponse<String>> deleteEmployee(@PathVariable Long employeeId, Authentication auth) {
+        if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return ResponseEntity.status(403).body(ApiResponse.error("Access denied", "FORBIDDEN"));
+        }
+        try {
+            employeeService.deleteEmployee(employeeId);
+            return ResponseEntity.ok(ApiResponse.success("Employee deleted", "Deleted successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DELETE_FAILED"));
         }
     }
 

@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +57,7 @@ public class AuthService {
             .password(passwordEncoder.encode(request.getPassword()))
             .role(Role.ROLE_CUSTOMER)
             .active(true)
-            .emailVerified(false)
+            .emailVerified(false)   // must verify before login
             .build();
 
         user = userRepository.save(user);
@@ -80,13 +79,14 @@ public class AuthService {
 
         customerRepository.save(customer);
 
-        // Send welcome email and OTP for email verification
+        // Send welcome email and OTP
         emailService.sendWelcomeEmail(request.getEmail(), request.getFirstName());
         generateAndSendOtp(request.getEmail(), OtpPurpose.EMAIL_VERIFICATION);
 
-        auditService.logSuccess(user.getId(), user.getUsername(), "REGISTER", "USER", user.getId().toString(), "New customer registered");
+        auditService.logSuccess(user.getId(), user.getUsername(), "REGISTER", "USER",
+            user.getId().toString(), "New customer registered — email verification pending");
 
-        return ApiResponse.success("Registration successful. Please verify your email.");
+        return ApiResponse.success("Registration successful. Please enter the OTP sent to " + request.getEmail() + " to verify your account.");
     }
 
     @Transactional
@@ -100,9 +100,22 @@ public class AuthService {
             User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+            // ── Block login if email not verified ───────────────────────────
+            if (!user.getEmailVerified()) {
+                // Re-send OTP so user can verify
+                generateAndSendOtp(user.getEmail(), OtpPurpose.EMAIL_VERIFICATION);
+                auditService.logFailure(user.getId(), user.getUsername(), "LOGIN", "AUTH",
+                    null, "Login blocked — email not verified");
+                return ApiResponse.error(
+                    "EMAIL_NOT_VERIFIED:" + user.getEmail(),
+                    "EMAIL_NOT_VERIFIED"
+                );
+            }
+
             String token = jwtUtil.generateToken(userDetails);
 
-            auditService.logSuccess(user.getId(), user.getUsername(), "LOGIN", "AUTH", null, "Successful login");
+            auditService.logSuccess(user.getId(), user.getUsername(), "LOGIN", "AUTH",
+                null, "Successful login");
 
             LoginResponse response = LoginResponse.builder()
                 .token(token)
@@ -116,8 +129,12 @@ public class AuthService {
                 .build();
 
             return ApiResponse.success(response, "Login successful");
+
         } catch (Exception e) {
-            auditService.logFailure(null, request.getIdentifier(), "LOGIN", "AUTH", null, e.getMessage());
+            // Don't expose email-not-verified error code through the catch block
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("EMAIL_NOT_VERIFIED")) throw e;
+            auditService.logFailure(null, request.getIdentifier(), "LOGIN", "AUTH", null, msg);
             return ApiResponse.error("Invalid credentials", "INVALID_CREDENTIALS");
         }
     }
@@ -127,7 +144,6 @@ public class AuthService {
         if (!userRepository.existsByEmail(request.getEmail())) {
             return ApiResponse.error("Email not registered", "EMAIL_NOT_FOUND");
         }
-
         generateAndSendOtp(request.getEmail(), request.getPurpose());
         return ApiResponse.success("OTP sent to " + request.getEmail());
     }
@@ -138,13 +154,14 @@ public class AuthService {
             .orElse(null);
 
         if (otp == null) {
-            return ApiResponse.error("Invalid or expired OTP", "INVALID_OTP");
+            return ApiResponse.error("Invalid or expired OTP. Request a new one.", "INVALID_OTP");
         }
 
         if (!otp.getOtpCode().equals(request.getOtpCode())) {
             otp.setAttemptCount(otp.getAttemptCount() + 1);
             otpRepository.save(otp);
-            return ApiResponse.error("Incorrect OTP", "WRONG_OTP");
+            int remaining = 5 - otp.getAttemptCount();
+            return ApiResponse.error("Incorrect OTP. " + (remaining > 0 ? remaining + " attempts remaining." : "Please request a new OTP."), "WRONG_OTP");
         }
 
         otp.setUsed(true);
@@ -154,14 +171,14 @@ public class AuthService {
             userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
                 user.setEmailVerified(true);
                 userRepository.save(user);
+                log.info("Email verified for user: {}", user.getEmail());
             });
         }
 
-        return ApiResponse.success("OTP verified successfully");
+        return ApiResponse.success("Email verified successfully. You can now log in.");
     }
 
     private void generateAndSendOtp(String email, OtpPurpose purpose) {
-        // Invalidate previous OTPs
         otpRepository.invalidatePreviousOtps(email, purpose);
 
         String otpCode = generateOtpCode();
@@ -181,7 +198,6 @@ public class AuthService {
     }
 
     private String generateOtpCode() {
-        SecureRandom random = new SecureRandom();
-        return String.format("%06d", random.nextInt(1000000));
+        return String.format("%06d", new SecureRandom().nextInt(1000000));
     }
 }

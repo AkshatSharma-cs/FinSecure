@@ -9,6 +9,7 @@ com\finsecure\entity\KycDocument$KycDocumentBuilder.class
 com\finsecure\entity\Account$AccountStatus.class
 com\finsecure\dto\OtpVerificationRequest$OtpVerificationRequestBuilder.class
 com\finsecure\service\CustomerService$1.class
+com\finsecure\dto\EmployeeResponse$EmployeeResponseBuilder.class
 com\finsecure\dto\TransactionRequest.class
 com\finsecure\entity\User$Role.class
 com\finsecure\entity\KycDocument$DocumentType.class
@@ -41,6 +42,7 @@ com\finsecure\dto\RegisterRequest$RegisterRequestBuilder.class
 com\finsecure\dto\IssueCreditCardRequest.class
 com\finsecure\entity\AuditLog$AuditLogBuilder.class
 com\finsecure\dto\LoginResponse.class
+com\finsecure\dto\CreateEmployeeRequest.class
 com\finsecure\dto\IssuePrepaidCardRequest.class
 com\finsecure\dto\CardActionRequest.class
 com\finsecure\dto\LoanResponse.class
@@ -105,6 +107,7 @@ com\finsecure\dto\TransactionRequest$TransactionRequestBuilder.class
 com\finsecure\repository\NotificationRepository.class
 com\finsecure\entity\Otp.class
 com\finsecure\entity\Transaction$TransactionMode.class
+com\finsecure\dto\EmployeeResponse.class
 com\finsecure\entity\AuditLog$AuditResult.class
 com\finsecure\entity\Account.class
 com\finsecure\entity\Otp$OtpBuilder.class

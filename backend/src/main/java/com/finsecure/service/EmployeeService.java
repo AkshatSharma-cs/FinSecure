@@ -9,11 +9,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,6 +32,8 @@ public class EmployeeService {
     private final EmailService emailService;
     private final AuditService auditService;
     private final TransactionService transactionService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public Page<CustomerProfileResponse> getAllCustomers(Pageable pageable) {
@@ -38,6 +43,13 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public Page<CustomerProfileResponse> searchCustomers(String name, Pageable pageable) {
         return customerRepository.searchByName(name, pageable).map(this::mapToProfile);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<CustomerProfileResponse> searchByAccountNumber(String accountNumber) {
+        return customerRepository.findByAccountNumber(accountNumber)
+            .map(c -> java.util.List.of(mapToProfile(c)))
+            .orElse(java.util.List.of());
     }
 
     @Transactional(readOnly = true)
@@ -180,7 +192,6 @@ public class EmployeeService {
 
     @Transactional
     public TransactionResponse depositToCustomerAccount(DepositRequest request, String employeeEmail) {
-        // Verify employee exists
         employeeRepository.findAll().stream()
             .filter(e -> e.getUser().getEmail().equals(employeeEmail))
             .findFirst()
@@ -191,6 +202,78 @@ public class EmployeeService {
             request.getAmount(),
             request.getDescription() != null ? request.getDescription() : "Cash deposit by employee"
         );
+    }
+
+    @Transactional
+    public EmployeeResponse createEmployee(CreateEmployeeRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Email already registered");
+        }
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("Username already taken");
+        }
+
+        User user = User.builder()
+            .email(request.getEmail())
+            .username(request.getUsername())
+            .password(passwordEncoder.encode(request.getPassword()))
+            .role(User.Role.ROLE_EMPLOYEE)
+            .active(true)
+            .emailVerified(true)
+            .build();
+        user = userRepository.save(user);
+
+        // Generate unique employee ID
+        long count = employeeRepository.count() + 1;
+        String empId = String.format("EMP%03d", count);
+        while (employeeRepository.existsByEmployeeId(empId)) {
+            count++;
+            empId = String.format("EMP%03d", count);
+        }
+
+        Employee employee = Employee.builder()
+            .user(user)
+            .employeeId(empId)
+            .firstName(request.getFirstName())
+            .lastName(request.getLastName())
+            .phone(request.getPhone())
+            .joiningDate(request.getJoiningDate() != null ? request.getJoiningDate() : LocalDate.now())
+            .department(Employee.Department.valueOf(request.getDepartment()))
+            .status(Employee.EmployeeStatus.ACTIVE)
+            .build();
+        employee = employeeRepository.save(employee);
+
+        return mapToEmployeeResponse(employee);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EmployeeResponse> getAllEmployees() {
+        return employeeRepository.findAll().stream()
+            .map(this::mapToEmployeeResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteEmployee(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId)
+            .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+        userRepository.delete(employee.getUser());
+    }
+
+    private EmployeeResponse mapToEmployeeResponse(Employee e) {
+        return EmployeeResponse.builder()
+            .id(e.getId())
+            .employeeId(e.getEmployeeId())
+            .firstName(e.getFirstName())
+            .lastName(e.getLastName())
+            .email(e.getUser().getEmail())
+            .username(e.getUser().getUsername())
+            .phone(e.getPhone())
+            .joiningDate(e.getJoiningDate())
+            .department(e.getDepartment().name())
+            .status(e.getStatus().name())
+            .createdAt(e.getCreatedAt())
+            .build();
     }
 
 }
