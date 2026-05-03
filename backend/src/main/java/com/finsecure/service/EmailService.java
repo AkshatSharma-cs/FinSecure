@@ -116,6 +116,26 @@ public class EmailService {
         }
     }
 
+    public void sendPasswordChangedEmail(String to, String username) {
+        String subject = "FinSecure — Your Password Has Been Changed";
+        String body = String.format("""
+            Dear %s,
+            
+            Your FinSecure account password has been successfully reset.
+            
+            If you did not make this change, please contact our support team immediately and secure your account.
+            
+            For security, we recommend:
+            - Never share your password with anyone
+            - Use a strong, unique password
+            - Enable two-factor authentication
+            
+            Best regards,
+            FinSecure Security Team
+            """, username);
+        sendEmail(to, subject, body);
+    }
+
     private String buildOtpEmailBody(String otp, String purpose) {
         return String.format("""
             Dear Customer,

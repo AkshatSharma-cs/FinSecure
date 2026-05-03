@@ -178,6 +178,45 @@ public class AuthService {
         return ApiResponse.success("Email verified successfully. You can now log in.");
     }
 
+    @Transactional
+    public ApiResponse<String> forgotPassword(String email) {
+        if (!userRepository.existsByEmail(email)) {
+            return ApiResponse.success("If this email is registered, you will receive a password reset OTP.");
+        }
+        generateAndSendOtp(email, OtpPurpose.PASSWORD_RESET);
+        return ApiResponse.success("Password reset OTP sent to " + email + ". Valid for 5 minutes.");
+    }
+
+    @Transactional
+    public ApiResponse<String> resetPassword(ResetPasswordRequest request) {
+        Otp otp = otpRepository.findValidOtp(request.getEmail(), OtpPurpose.PASSWORD_RESET, LocalDateTime.now())
+            .orElse(null);
+
+        if (otp == null) {
+            return ApiResponse.error("Invalid or expired OTP. Please request a new one.", "INVALID_OTP");
+        }
+        if (!otp.getOtpCode().equals(request.getOtpCode())) {
+            otp.setAttemptCount(otp.getAttemptCount() + 1);
+            otpRepository.save(otp);
+            return ApiResponse.error("Incorrect OTP. Please try again.", "WRONG_OTP");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        otp.setUsed(true);
+        otpRepository.save(otp);
+
+        emailService.sendPasswordChangedEmail(request.getEmail(), user.getUsername());
+        auditService.logSuccess(user.getId(), user.getUsername(), "PASSWORD_RESET", "USER",
+            user.getId().toString(), "Password reset via OTP");
+
+        return ApiResponse.success("Password reset successfully. You can now log in with your new password.");
+    }
+
     private void generateAndSendOtp(String email, OtpPurpose purpose) {
         otpRepository.invalidatePreviousOtps(email, purpose);
 

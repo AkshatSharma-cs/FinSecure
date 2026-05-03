@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://tender-vision-production-5ef6.up.railway.app/api';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -36,6 +36,8 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   sendOtp: (data) => api.post('/auth/otp/send', data),
   verifyOtp: (data) => api.post('/auth/otp/verify', data),
+  forgotPassword: (email) => api.post(`/auth/forgot-password?email=${encodeURIComponent(email)}`),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // Customer APIs
@@ -44,7 +46,17 @@ export const customerAPI = {
   getDashboard: () => api.get('/customer/dashboard'),
   createAccount: (data) => api.post('/customer/accounts', data),
   transfer: (data) => api.post('/customer/transactions/transfer', data),
-  getTransactions: (accountId, page = 0) => api.get(`/customer/transactions/${accountId}?page=${page}&size=20`),
+  getTransactions: (accountId, page = 0, filters = {}) => {
+    const params = new URLSearchParams({ page, size: 20 });
+    if (filters.type)      params.append('type', filters.type);
+    if (filters.fromDate)  params.append('fromDate', filters.fromDate);
+    if (filters.toDate)    params.append('toDate', filters.toDate);
+    if (filters.minAmount) params.append('minAmount', filters.minAmount);
+    if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
+    return api.get(`/customer/transactions/${accountId}?${params.toString()}`);
+  },
+  downloadStatement: (accountId, months = 3) =>
+    api.get(`/customer/transactions/${accountId}/statement?months=${months}`, { responseType: 'blob' }),
   getLoans: () => api.get('/customer/loans'),
   applyLoan: (data) => api.post('/customer/loans/apply', data),
   getCards: () => api.get('/customer/cards'),

@@ -76,10 +76,32 @@ public class CustomerController {
     public ResponseEntity<ApiResponse<Page<TransactionResponse>>> getTransactions(
             @PathVariable Long accountId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Page<TransactionResponse> txns = transactionService.getTransactionHistory(
-            accountId, PageRequest.of(page, size, Sort.by("createdAt").descending()));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @RequestParam(required = false) String minAmount,
+            @RequestParam(required = false) String maxAmount,
+            Authentication auth) {
+        Page<TransactionResponse> txns = transactionService.getFilteredTransactions(
+            accountId, auth.getName(), page, size, type, fromDate, toDate, minAmount, maxAmount);
         return ResponseEntity.ok(ApiResponse.success(txns, "Transactions retrieved"));
+    }
+
+    @GetMapping("/transactions/{accountId}/statement")
+    public ResponseEntity<byte[]> downloadStatement(
+            @PathVariable Long accountId,
+            @RequestParam(defaultValue = "3") int months,
+            Authentication auth) {
+        try {
+            byte[] pdf = transactionService.generateAccountStatement(accountId, auth.getName(), months);
+            return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "attachment; filename=\"statement_" + accountId + ".pdf\"")
+                .body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     // === LOANS ===

@@ -6,6 +6,7 @@ com\finsecure\repository\OtpRepository.class
 com\finsecure\entity\Employee$EmployeeStatus.class
 com\finsecure\dto\AccountResponse.class
 com\finsecure\entity\KycDocument$KycDocumentBuilder.class
+com\finsecure\dto\ResetPasswordRequest.class
 com\finsecure\entity\Account$AccountStatus.class
 com\finsecure\dto\OtpVerificationRequest$OtpVerificationRequestBuilder.class
 com\finsecure\service\CustomerService$1.class
@@ -62,6 +63,7 @@ com\finsecure\repository\CardRepository.class
 com\finsecure\entity\Employee.class
 com\finsecure\entity\User$UserBuilder.class
 com\finsecure\dto\OtpRequest$OtpRequestBuilder.class
+com\finsecure\dto\ResetPasswordRequest$ResetPasswordRequestBuilder.class
 com\finsecure\entity\Account$AccountType.class
 com\finsecure\dto\CreateAccountRequest$CreateAccountRequestBuilder.class
 com\finsecure\repository\LoanRepository.class

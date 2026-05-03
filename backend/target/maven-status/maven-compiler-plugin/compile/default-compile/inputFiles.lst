@@ -27,6 +27,7 @@ C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\NotificationRespon
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\OtpRequest.java
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\OtpVerificationRequest.java
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\RegisterRequest.java
+C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\ResetPasswordRequest.java
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\TransactionRequest.java
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\dto\TransactionResponse.java
 C:\Projects\finsecure\backend\src\main\java\com\finsecure\entity\Account.java

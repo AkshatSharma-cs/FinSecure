@@ -46,6 +46,19 @@ public class AuthController {
             : ResponseEntity.badRequest().body(response);
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@RequestParam @jakarta.validation.constraints.Email String email) {
+        return ResponseEntity.ok(authService.forgotPassword(email));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        ApiResponse<String> response = authService.resetPassword(request);
+        return response.isSuccess()
+            ? ResponseEntity.ok(response)
+            : ResponseEntity.badRequest().body(response);
+    }
+
     @GetMapping("/health")
     public ResponseEntity<ApiResponse<String>> health() {
         return ResponseEntity.ok(ApiResponse.success("FinSecure API is running"));

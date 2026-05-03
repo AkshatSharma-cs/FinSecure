@@ -170,6 +170,8 @@ function Login() {
 
         <div className="login-footer">
           Don't have an account? <Link to="/register">Register here</Link>
+          <br />
+          <Link to="/forgot-password" style={{ color: '#6b7280', fontSize: 13 }}>Forgot password?</Link>
         </div>
       </div>
     </div>

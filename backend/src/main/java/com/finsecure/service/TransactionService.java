@@ -11,12 +11,17 @@ import com.finsecure.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -193,6 +198,140 @@ public class TransactionService {
             throw new IllegalStateException("Account is not active");
 
         return processDeposit(accountNumber, amount, description != null ? description : "Self deposit");
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getFilteredTransactions(
+            Long accountId, String userEmail, int page, int size,
+            String type, String fromDate, String toDate,
+            String minAmount, String maxAmount) {
+
+        // Validate account belongs to user
+        Account account = accountRepository.findById(accountId)
+            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (!account.getCustomer().getUser().getEmail().equals(userEmail))
+            throw new SecurityException("Account does not belong to you");
+
+        TransactionType txnType = (type != null && !type.isBlank()) ? TransactionType.valueOf(type) : null;
+        LocalDateTime from = (fromDate != null && !fromDate.isBlank())
+            ? LocalDateTime.parse(fromDate + "T00:00:00") : null;
+        LocalDateTime to = (toDate != null && !toDate.isBlank())
+            ? LocalDateTime.parse(toDate + "T23:59:59") : null;
+        BigDecimal min = (minAmount != null && !minAmount.isBlank()) ? new BigDecimal(minAmount) : null;
+        BigDecimal max = (maxAmount != null && !maxAmount.isBlank()) ? new BigDecimal(maxAmount) : null;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return transactionRepository.findFiltered(accountId, txnType, from, to, min, max, pageable)
+            .map(this::mapToResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generateAccountStatement(Long accountId, String userEmail, int months) throws Exception {
+        Account account = accountRepository.findById(accountId)
+            .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        if (!account.getCustomer().getUser().getEmail().equals(userEmail))
+            throw new SecurityException("Account does not belong to you");
+
+        LocalDateTime from = LocalDateTime.now().minusMonths(months);
+        LocalDateTime to = LocalDateTime.now();
+        List<Transaction> txns = transactionRepository.findByAccountIdAndCreatedAtBetween(accountId, from, to);
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+        DateTimeFormatter df  = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        String customerName = account.getCustomer().getFirstName() + " " + account.getCustomer().getLastName();
+
+        // Build a simple text-based PDF using raw PDF commands
+        StringBuilder sb = new StringBuilder();
+        sb.append("%PDF-1.4\n");
+
+        // Build readable content as a plain text stream
+        StringBuilder content = new StringBuilder();
+        content.append("FINSECURE BANK\n");
+        content.append("Account Statement\n");
+        content.append("=".repeat(60)).append("\n\n");
+        content.append(String.format("Account Holder : %s\n", customerName));
+        content.append(String.format("Account Number : %s\n", account.getAccountNumber()));
+        content.append(String.format("Account Type   : %s\n", account.getAccountType()));
+        content.append(String.format("IFSC Code      : %s\n", account.getIfscCode()));
+        content.append(String.format("Branch         : %s\n", account.getBranchName()));
+        content.append(String.format("Statement From : %s\n", from.format(df)));
+        content.append(String.format("Statement To   : %s\n", to.format(df)));
+        content.append(String.format("Current Balance: INR %,.2f\n\n", account.getBalance()));
+        content.append("=".repeat(60)).append("\n");
+        content.append(String.format("%-28s %-10s %-8s %-12s %-14s\n",
+            "Date", "Type", "Mode", "Amount", "Balance"));
+        content.append("-".repeat(60)).append("\n");
+
+        BigDecimal totalCredits = BigDecimal.ZERO;
+        BigDecimal totalDebits  = BigDecimal.ZERO;
+
+        for (Transaction t : txns) {
+            String sign = t.getType() == TransactionType.CREDIT ? "+" : "-";
+            content.append(String.format("%-28s %-10s %-8s %s%-11s %-14s\n",
+                t.getCreatedAt().format(dtf),
+                t.getType(),
+                t.getMode(),
+                sign,
+                String.format("%,.2f", t.getAmount()),
+                String.format("%,.2f", t.getBalanceAfter())));
+            if (t.getDescription() != null && !t.getDescription().isBlank()) {
+                content.append(String.format("  Desc: %s\n", t.getDescription()));
+            }
+            if (t.getType() == TransactionType.CREDIT) totalCredits = totalCredits.add(t.getAmount());
+            else totalDebits = totalDebits.add(t.getAmount());
+        }
+
+        content.append("=".repeat(60)).append("\n");
+        content.append(String.format("Total Credits  : INR %,.2f\n", totalCredits));
+        content.append(String.format("Total Debits   : INR %,.2f\n", totalDebits));
+        content.append(String.format("Total Txns     : %d\n", txns.size()));
+        content.append("\nGenerated on: ").append(to.format(dtf)).append("\n");
+        content.append("This is a computer-generated statement. No signature required.\n");
+
+        // Build minimal valid PDF
+        byte[] streamData = content.toString().getBytes();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        String obj1 = "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n";
+        String obj2 = "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n";
+        String streamContent = "BT\n/F1 9 Tf\n50 780 Td\n14 TL\n";
+        for (String line : content.toString().split("\n")) {
+            String escaped = line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)");
+            streamContent += "(" + escaped + ") Tj T*\n";
+        }
+        streamContent += "ET\n";
+        byte[] streamBytes = streamContent.getBytes();
+
+        String obj3 = "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]\n"
+            + "   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n";
+        String obj4 = "4 0 obj\n<< /Length " + streamBytes.length + " >>\nstream\n";
+        String obj4end = "\nendstream\nendobj\n";
+        String obj5 = "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n";
+
+        String header = "%PDF-1.4\n";
+        out.write(header.getBytes());
+        int[] offsets = new int[6];
+        offsets[1] = out.size(); out.write(obj1.getBytes());
+        offsets[2] = out.size(); out.write(obj2.getBytes());
+        offsets[3] = out.size(); out.write(obj3.getBytes());
+        offsets[4] = out.size();
+        out.write(obj4.getBytes());
+        out.write(streamBytes);
+        out.write(obj4end.getBytes());
+        offsets[5] = out.size(); out.write(obj5.getBytes());
+
+        int xrefOffset = out.size();
+        String xref = "xref\n0 6\n0000000000 65535 f \n"
+            + String.format("%010d 00000 n \n", offsets[1])
+            + String.format("%010d 00000 n \n", offsets[2])
+            + String.format("%010d 00000 n \n", offsets[3])
+            + String.format("%010d 00000 n \n", offsets[4])
+            + String.format("%010d 00000 n \n", offsets[5]);
+        out.write(xref.getBytes());
+        String trailer = "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xrefOffset + "\n%%EOF\n";
+        out.write(trailer.getBytes());
+
+        return out.toByteArray();
     }
 
 }
