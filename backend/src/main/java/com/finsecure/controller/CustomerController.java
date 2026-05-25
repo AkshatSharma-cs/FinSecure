@@ -91,17 +91,44 @@ public class CustomerController {
     @GetMapping("/transactions/{accountId}/statement")
     public ResponseEntity<byte[]> downloadStatement(
             @PathVariable Long accountId,
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer quarter,
             @RequestParam(defaultValue = "3") int months,
             Authentication auth) {
         try {
-            byte[] pdf = transactionService.generateAccountStatement(accountId, auth.getName(), months);
+            boolean hasPeriodicRequest = period != null || year != null || month != null || quarter != null;
+            byte[] pdf = hasPeriodicRequest
+                ? transactionService.generatePeriodicAccountStatement(accountId, auth.getName(), period, year, month, quarter)
+                : transactionService.generateAccountStatement(accountId, auth.getName(), months);
+            String filename = buildStatementFilename(accountId, period, year, month, quarter, months);
             return ResponseEntity.ok()
                 .header("Content-Type", "application/pdf")
-                .header("Content-Disposition", "attachment; filename=\"statement_" + accountId + ".pdf\"")
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                 .body(pdf);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    private String buildStatementFilename(Long accountId, String period, Integer year,
+                                          Integer month, Integer quarter, int months) {
+        if (period == null && year == null && month == null && quarter == null) {
+            return "statement_" + accountId + "_last_" + months + "_months.pdf";
+        }
+
+        String normalizedPeriod = period == null || period.isBlank()
+                ? (quarter != null ? "quarterly" : "monthly")
+                : period.trim().toLowerCase();
+        String suffix = switch (normalizedPeriod) {
+            case "quarterly" -> "q" + (quarter != null ? quarter : "current") + "_" +
+                    (year != null ? year : "current");
+            case "monthly" -> (month != null ? String.format("%02d", month) : "current") + "_" +
+                    (year != null ? year : "current");
+            default -> "periodic";
+        };
+        return "statement_" + accountId + "_" + normalizedPeriod + "_" + suffix + ".pdf";
     }
 
     // === LOANS ===

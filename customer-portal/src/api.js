@@ -55,8 +55,17 @@ export const customerAPI = {
     if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
     return api.get(`/customer/transactions/${accountId}?${params.toString()}`);
   },
-  downloadStatement: (accountId, months = 3) =>
-    api.get(`/customer/transactions/${accountId}/statement?months=${months}`, { responseType: 'blob' }),
+  downloadStatement: (accountId, options = { months: 3 }) => {
+    const params = new URLSearchParams();
+    if (options.period) params.append('period', options.period);
+    if (options.year) params.append('year', options.year);
+    if (options.month) params.append('month', options.month);
+    if (options.quarter) params.append('quarter', options.quarter);
+    if (options.months) params.append('months', options.months);
+    return api.get(`/customer/transactions/${accountId}/statement?${params.toString()}`, {
+      responseType: 'blob',
+    });
+  },
   getLoans: () => api.get('/customer/loans'),
   applyLoan: (data) => api.post('/customer/loans/apply', data),
   getCards: () => api.get('/customer/cards'),

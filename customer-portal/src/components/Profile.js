@@ -6,19 +6,52 @@ import './Dashboard.css';
 function Profile() {
   const [profile, setProfile] = useState(null);
   const [kycDocs, setKycDocs] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showKycModal, setShowKycModal] = useState(false);
   const [kycForm, setKycForm] = useState({ documentType: 'AADHAAR', documentNumber: '', filePath: '', fileName: '' });
   const [message, setMessage] = useState({ text: '', type: '' });
   const [submitting, setSubmitting] = useState(false);
+  const currentDate = new Date();
+  const [statementAccountId, setStatementAccountId] = useState('');
+  const [statementMode, setStatementMode] = useState('monthly');
+  const [statementYear, setStatementYear] = useState(currentDate.getFullYear());
+  const [statementMonth, setStatementMonth] = useState(currentDate.getMonth() + 1);
+  const [statementQuarter, setStatementQuarter] = useState(Math.floor(currentDate.getMonth() / 3) + 1);
+  const [statementDownloading, setStatementDownloading] = useState(false);
+
+  const years = Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - i);
+  const months = [
+    { value: 1, label: 'January' },
+    { value: 2, label: 'February' },
+    { value: 3, label: 'March' },
+    { value: 4, label: 'April' },
+    { value: 5, label: 'May' },
+    { value: 6, label: 'June' },
+    { value: 7, label: 'July' },
+    { value: 8, label: 'August' },
+    { value: 9, label: 'September' },
+    { value: 10, label: 'October' },
+    { value: 11, label: 'November' },
+    { value: 12, label: 'December' },
+  ];
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
-      const [profileRes, kycRes] = await Promise.all([customerAPI.getProfile(), customerAPI.getKycDocuments()]);
+      const [profileRes, kycRes, dashboardRes] = await Promise.all([
+        customerAPI.getProfile(),
+        customerAPI.getKycDocuments(),
+        customerAPI.getDashboard(),
+      ]);
       setProfile(profileRes.data.data);
       setKycDocs(kycRes.data.data || []);
+      const loadedAccounts = dashboardRes.data.data?.accounts || [];
+      setAccounts(loadedAccounts);
+      if (!statementAccountId && loadedAccounts.length > 0) {
+        setStatementAccountId(String(loadedAccounts[0].id));
+      }
     } finally {
       setLoading(false);
     }
@@ -36,6 +69,39 @@ function Profile() {
       setMessage({ text: err.response?.data?.message || 'Upload failed.', type: 'error' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDownloadStatement = async () => {
+    if (!statementAccountId) {
+      setMessage({ text: 'Please select an account first.', type: 'error' });
+      return;
+    }
+
+    setStatementDownloading(true);
+    try {
+      const options = statementMode === 'quarterly'
+        ? { period: 'quarterly', year: statementYear, quarter: statementQuarter }
+        : { period: 'monthly', year: statementYear, month: statementMonth };
+      const res = await customerAPI.downloadStatement(statementAccountId, options);
+      const selectedAccount = accounts.find(acc => String(acc.id) === String(statementAccountId));
+      const accountLabel = selectedAccount?.accountNumber || statementAccountId;
+      const periodLabel = statementMode === 'quarterly'
+        ? `Q${statementQuarter}_${statementYear}`
+        : `${String(statementMonth).padStart(2, '0')}_${statementYear}`;
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `FinSecure_Statement_${accountLabel}_${statementMode}_${periodLabel}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setMessage({ text: 'Statement download started.', type: 'success' });
+    } catch (err) {
+      setMessage({ text: err.response?.data?.message || 'Failed to download statement.', type: 'error' });
+    } finally {
+      setStatementDownloading(false);
     }
   };
 
@@ -95,6 +161,96 @@ function Profile() {
                 style={{ padding: '10px 20px', background: '#3182ce', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14, width: '100%' }}>
                 + Upload KYC Document
               </button>
+            </div>
+
+            <div className="section-card" style={{ marginBottom: 20 }}>
+              <div className="section-title" style={{ marginBottom: 16 }}>Account Statements</div>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Account</label>
+                  <select value={statementAccountId} onChange={e => setStatementAccountId(e.target.value)}>
+                    {accounts.length === 0 && <option value="">No accounts available</option>}
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.accountNumber} ({acc.accountType.replace('_', ' ')})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <button type="button"
+                    onClick={() => setStatementMode('monthly')}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: `1px solid ${statementMode === 'monthly' ? '#3182ce' : '#e2e8f0'}`,
+                      background: statementMode === 'monthly' ? '#ebf8ff' : '#f8fafc',
+                      color: statementMode === 'monthly' ? '#2b6cb0' : '#4a5568',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                    }}>
+                    Monthly
+                  </button>
+                  <button type="button"
+                    onClick={() => setStatementMode('quarterly')}
+                    style={{
+                      padding: '9px 12px',
+                      borderRadius: 8,
+                      border: `1px solid ${statementMode === 'quarterly' ? '#3182ce' : '#e2e8f0'}`,
+                      background: statementMode === 'quarterly' ? '#ebf8ff' : '#f8fafc',
+                      color: statementMode === 'quarterly' ? '#2b6cb0' : '#4a5568',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                    }}>
+                    Quarterly
+                  </button>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Year</label>
+                  <select value={statementYear} onChange={e => setStatementYear(Number(e.target.value))}>
+                    {years.map(year => <option key={year} value={year}>{year}</option>)}
+                  </select>
+                </div>
+
+                {statementMode === 'monthly' ? (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Month</label>
+                    <select value={statementMonth} onChange={e => setStatementMonth(Number(e.target.value))}>
+                      {months.map(month => (
+                        <option key={month.value} value={month.value}>{month.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Quarter</label>
+                    <select value={statementQuarter} onChange={e => setStatementQuarter(Number(e.target.value))}>
+                      <option value={1}>Q1 - Jan to Mar</option>
+                      <option value={2}>Q2 - Apr to Jun</option>
+                      <option value={3}>Q3 - Jul to Sep</option>
+                      <option value={4}>Q4 - Oct to Dec</option>
+                    </select>
+                  </div>
+                )}
+
+                <button onClick={handleDownloadStatement}
+                  disabled={statementDownloading || !statementAccountId}
+                  style={{
+                    padding: '11px 20px',
+                    background: statementDownloading || !statementAccountId ? '#a0aec0' : '#1a202c',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: statementDownloading || !statementAccountId ? 'not-allowed' : 'pointer',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    width: '100%',
+                  }}>
+                  {statementDownloading ? 'Downloading...' : 'Download PDF Statement'}
+                </button>
+              </div>
             </div>
 
             <div className="section-card">

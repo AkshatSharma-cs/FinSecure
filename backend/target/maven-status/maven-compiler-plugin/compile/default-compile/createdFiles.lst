@@ -60,6 +60,7 @@ com\finsecure\entity\Transaction$TransactionType.class
 com\finsecure\dto\TransactionResponse$TransactionResponseBuilder.class
 com\finsecure\entity\KycDocument$DocumentStatus.class
 com\finsecure\repository\CardRepository.class
+com\finsecure\service\TransactionService$StatementWindow.class
 com\finsecure\entity\Employee.class
 com\finsecure\entity\User$UserBuilder.class
 com\finsecure\dto\OtpRequest$OtpRequestBuilder.class

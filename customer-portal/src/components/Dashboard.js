@@ -183,7 +183,7 @@ function Dashboard() {
         <div className="quick-links">
           <Link to="/cards" className="quick-link-card">💳 <span>Cards</span></Link>
           <Link to="/loans" className="quick-link-card">📋 <span>Loans</span></Link>
-          <Link to="/profile" className="quick-link-card">👤 <span>Profile & KYC</span></Link>
+          <Link to="/profile" className="quick-link-card">👤 <span>Profile, KYC & Statements</span></Link>
         </div>
 
         {/* Recent Transactions */}
