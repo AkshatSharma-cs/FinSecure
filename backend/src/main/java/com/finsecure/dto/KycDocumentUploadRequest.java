@@ -14,9 +14,13 @@ public class KycDocumentUploadRequest {
     @NotBlank(message = "Document number is required")
     private String documentNumber;
 
-    @NotBlank(message = "File path is required")
-    private String filePath;
+    /**
+     * Base64-encoded PDF data URI, e.g. "data:application/pdf;base64,JVBERi0x..."
+     * The frontend reads the file with FileReader.readAsDataURL() and sends the result here.
+     */
+    @NotBlank(message = "File data is required")
+    private String fileData;
 
+    @NotBlank(message = "File name is required")
     private String fileName;
-    private String mimeType;
 }

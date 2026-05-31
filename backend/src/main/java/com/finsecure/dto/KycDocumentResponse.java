@@ -14,6 +14,9 @@ public class KycDocumentResponse {
     private String customerName;
     private DocumentType documentType;
     private String documentNumber;
+    private String fileName;
+    /** True when binary PDF data is present — lets the frontend show a View button. */
+    private boolean hasFile;
     private DocumentStatus status;
     private String rejectionReason;
     private LocalDateTime verifiedAt;

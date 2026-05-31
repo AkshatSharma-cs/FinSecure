@@ -36,7 +36,8 @@ public class KycDocument {
     @Column(nullable = false, length = 100)
     private String documentNumber;
 
-    @Column(nullable = false, length = 500)
+    // Kept for backwards-compatibility — no longer populated for new uploads
+    @Column(length = 500)
     private String filePath;
 
     @Column(length = 100)
@@ -44,6 +45,11 @@ public class KycDocument {
 
     @Column(length = 50)
     private String mimeType;
+
+    // Actual PDF bytes stored in the database
+    @Lob
+    @Column(name = "file_data", columnDefinition = "MEDIUMBLOB")
+    private byte[] fileData;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
