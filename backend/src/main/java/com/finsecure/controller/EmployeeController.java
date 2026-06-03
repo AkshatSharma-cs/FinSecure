@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -35,7 +37,8 @@ public class EmployeeController {
             @RequestParam(defaultValue = "desc") String dir) {
 
         Sort.Direction direction = dir.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortField = sort.equals("firstName") ? "firstName" : sort.equals("kycStatus") ? "kycStatus" : "createdAt";
+        String sortField = sort.equals("firstName") ? "firstName"
+            : sort.equals("kycStatus") ? "kycStatus" : "createdAt";
         PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
 
         Page<CustomerProfileResponse> customers = search != null && !search.isBlank()
@@ -62,12 +65,36 @@ public class EmployeeController {
         return ResponseEntity.ok(ApiResponse.success(docs, "Pending KYC documents retrieved"));
     }
 
+    /**
+     * Streams the PDF inline — no Content-Disposition: attachment header,
+     * so the browser renders it and the user cannot trigger a download
+     * through this endpoint. Right-click "Save As" is a browser-level control
+     * and cannot be fully prevented server-side, but we intentionally omit
+     * the download header so the default browser action is to display, not save.
+     */
+    @GetMapping("/kyc/documents/{documentId}/view")
+    public ResponseEntity<byte[]> viewKycDocument(@PathVariable Long documentId) {
+        try {
+            byte[] pdf = employeeService.getKycDocumentFile(documentId);
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                // "inline" tells the browser to display — no download prompt
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"kyc-document.pdf\"")
+                // Prevent caching so stale data is not served
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(pdf);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping("/kyc/verify")
     public ResponseEntity<ApiResponse<KycDocumentResponse>> verifyKyc(
             @Valid @RequestBody KycVerificationRequest request, Authentication auth) {
         try {
             KycDocumentResponse doc = employeeService.verifyKycDocument(request, auth.getName());
-            return ResponseEntity.ok(ApiResponse.success(doc, "KYC document " + request.getAction() + "d successfully"));
+            return ResponseEntity.ok(ApiResponse.success(
+                doc, "KYC document " + request.getAction() + "d successfully"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "KYC_FAILED"));
         }
@@ -100,10 +127,7 @@ public class EmployeeController {
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getEmployeeDashboard() {
-        Map<String, Object> data = Map.of(
-            "message", "Employee dashboard loaded",
-            "status", "operational"
-        );
+        Map<String, Object> data = Map.of("message", "Employee dashboard loaded", "status", "operational");
         return ResponseEntity.ok(ApiResponse.success(data, "Dashboard loaded"));
     }
 
@@ -113,7 +137,8 @@ public class EmployeeController {
             @Valid @RequestBody DepositRequest request, Authentication auth) {
         try {
             TransactionResponse txn = employeeService.depositToCustomerAccount(request, auth.getName());
-            return ResponseEntity.ok(ApiResponse.success(txn, "Deposit of ₹" + request.getAmount() + " successful"));
+            return ResponseEntity.ok(ApiResponse.success(
+                txn, "Deposit of ₹" + request.getAmount() + " successful"));
         } catch (IllegalArgumentException | SecurityException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DEPOSIT_FAILED"));
         }
@@ -125,7 +150,8 @@ public class EmployeeController {
         if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied", "FORBIDDEN"));
         }
-        return ResponseEntity.ok(ApiResponse.success(employeeService.getAllEmployees(), "Employees retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(
+            employeeService.getAllEmployees(), "Employees retrieved"));
     }
 
     @PostMapping("/create")
@@ -143,7 +169,8 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/{employeeId}")
-    public ResponseEntity<ApiResponse<String>> deleteEmployee(@PathVariable Long employeeId, Authentication auth) {
+    public ResponseEntity<ApiResponse<String>> deleteEmployee(
+            @PathVariable Long employeeId, Authentication auth) {
         if (!auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return ResponseEntity.status(403).body(ApiResponse.error("Access denied", "FORBIDDEN"));
         }
@@ -154,5 +181,4 @@ public class EmployeeController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "DELETE_FAILED"));
         }
     }
-
 }

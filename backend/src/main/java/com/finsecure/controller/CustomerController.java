@@ -7,12 +7,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -29,12 +30,14 @@ public class CustomerController {
     // === PROFILE ===
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<CustomerProfileResponse>> getProfile(Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(customerService.getProfile(auth.getName()), "Profile retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(
+            customerService.getProfile(auth.getName()), "Profile retrieved"));
     }
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<DashboardResponse>> getDashboard(Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(customerService.getDashboard(auth.getName()), "Dashboard loaded"));
+        return ResponseEntity.ok(ApiResponse.success(
+            customerService.getDashboard(auth.getName()), "Dashboard loaded"));
     }
 
     // === ACCOUNTS ===
@@ -50,7 +53,6 @@ public class CustomerController {
     public ResponseEntity<ApiResponse<TransactionResponse>> deposit(
             @Valid @RequestBody DepositRequest request, Authentication auth) {
         try {
-            // Validate account belongs to user
             TransactionResponse txn = transactionService.processSelfDeposit(
                 request.getAccountNumber(), request.getAmount(),
                 request.getDescription(), auth.getName());
@@ -91,44 +93,18 @@ public class CustomerController {
     @GetMapping("/transactions/{accountId}/statement")
     public ResponseEntity<byte[]> downloadStatement(
             @PathVariable Long accountId,
-            @RequestParam(required = false) String period,
-            @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer month,
-            @RequestParam(required = false) Integer quarter,
             @RequestParam(defaultValue = "3") int months,
             Authentication auth) {
         try {
-            boolean hasPeriodicRequest = period != null || year != null || month != null || quarter != null;
-            byte[] pdf = hasPeriodicRequest
-                ? transactionService.generatePeriodicAccountStatement(accountId, auth.getName(), period, year, month, quarter)
-                : transactionService.generateAccountStatement(accountId, auth.getName(), months);
-            String filename = buildStatementFilename(accountId, period, year, month, quarter, months);
+            byte[] pdf = transactionService.generateAccountStatement(accountId, auth.getName(), months);
             return ResponseEntity.ok()
-                .header("Content-Type", "application/pdf")
-                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, "application/pdf")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"statement_" + accountId + ".pdf\"")
                 .body(pdf);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
-    }
-
-    private String buildStatementFilename(Long accountId, String period, Integer year,
-                                          Integer month, Integer quarter, int months) {
-        if (period == null && year == null && month == null && quarter == null) {
-            return "statement_" + accountId + "_last_" + months + "_months.pdf";
-        }
-
-        String normalizedPeriod = period == null || period.isBlank()
-                ? (quarter != null ? "quarterly" : "monthly")
-                : period.trim().toLowerCase();
-        String suffix = switch (normalizedPeriod) {
-            case "quarterly" -> "q" + (quarter != null ? quarter : "current") + "_" +
-                    (year != null ? year : "current");
-            case "monthly" -> (month != null ? String.format("%02d", month) : "current") + "_" +
-                    (year != null ? year : "current");
-            default -> "periodic";
-        };
-        return "statement_" + accountId + "_" + normalizedPeriod + "_" + suffix + ".pdf";
     }
 
     // === LOANS ===
@@ -145,13 +121,15 @@ public class CustomerController {
 
     @GetMapping("/loans")
     public ResponseEntity<ApiResponse<List<LoanResponse>>> getLoans(Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(customerService.getLoans(auth.getName()), "Loans retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(
+            customerService.getLoans(auth.getName()), "Loans retrieved"));
     }
 
     // === CARDS ===
     @GetMapping("/cards")
     public ResponseEntity<ApiResponse<List<CardResponse>>> getCards(Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(cardService.getCustomerCards(auth.getName()), "Cards retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(
+            cardService.getCustomerCards(auth.getName()), "Cards retrieved"));
     }
 
     @PostMapping("/cards/{accountId}/issue-debit")
@@ -213,13 +191,39 @@ public class CustomerController {
     @PostMapping("/kyc/upload")
     public ResponseEntity<ApiResponse<KycDocumentResponse>> uploadKycDocument(
             @Valid @RequestBody KycDocumentUploadRequest request, Authentication auth) {
-        KycDocumentResponse doc = customerService.uploadKycDocument(request, auth.getName());
-        return ResponseEntity.status(201).body(ApiResponse.success(doc, "Document uploaded successfully"));
+        try {
+            KycDocumentResponse doc = customerService.uploadKycDocument(request, auth.getName());
+            return ResponseEntity.status(201).body(ApiResponse.success(doc, "Document uploaded successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), "KYC_UPLOAD_FAILED"));
+        }
     }
 
     @GetMapping("/kyc/documents")
     public ResponseEntity<ApiResponse<List<KycDocumentResponse>>> getKycDocuments(Authentication auth) {
-        return ResponseEntity.ok(ApiResponse.success(customerService.getKycDocuments(auth.getName()), "Documents retrieved"));
+        return ResponseEntity.ok(ApiResponse.success(
+            customerService.getKycDocuments(auth.getName()), "Documents retrieved"));
+    }
+
+    /**
+     * Streams the stored PDF inline so the browser renders it directly.
+     * Content-Disposition is "inline" — the browser will display, not download.
+     * Only the document owner can access this endpoint.
+     */
+    @GetMapping("/kyc/documents/{documentId}/view")
+    public ResponseEntity<byte[]> viewKycDocument(
+            @PathVariable Long documentId, Authentication auth) {
+        try {
+            byte[] pdf = customerService.getKycDocumentFile(documentId, auth.getName());
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_PDF_VALUE)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"kyc-document.pdf\"")
+                .body(pdf);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(403).build();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     // === NOTIFICATIONS ===

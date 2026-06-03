@@ -101,7 +101,7 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
             // ── Block login if email not verified ───────────────────────────
-            if (!user.getEmailVerified()) {
+            if (user.getRole() == Role.ROLE_CUSTOMER && !Boolean.TRUE.equals(user.getEmailVerified())) {
                 // Re-send OTP so user can verify
                 generateAndSendOtp(user.getEmail(), OtpPurpose.EMAIL_VERIFICATION);
                 auditService.logFailure(user.getId(), user.getUsername(), "LOGIN", "AUTH",

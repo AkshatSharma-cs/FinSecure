@@ -23,8 +23,8 @@ function Login() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify({ email: data.email, username: data.username, role: data.role }));
       navigate('/');
-    } catch {
-      setError('Invalid credentials.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid credentials.');
     } finally {
       setLoading(false);
     }

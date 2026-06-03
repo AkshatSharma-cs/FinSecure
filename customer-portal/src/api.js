@@ -55,17 +55,8 @@ export const customerAPI = {
     if (filters.maxAmount) params.append('maxAmount', filters.maxAmount);
     return api.get(`/customer/transactions/${accountId}?${params.toString()}`);
   },
-  downloadStatement: (accountId, options = { months: 3 }) => {
-    const params = new URLSearchParams();
-    if (options.period) params.append('period', options.period);
-    if (options.year) params.append('year', options.year);
-    if (options.month) params.append('month', options.month);
-    if (options.quarter) params.append('quarter', options.quarter);
-    if (options.months) params.append('months', options.months);
-    return api.get(`/customer/transactions/${accountId}/statement?${params.toString()}`, {
-      responseType: 'blob',
-    });
-  },
+  downloadStatement: (accountId, months = 3) =>
+    api.get(`/customer/transactions/${accountId}/statement?months=${months}`, { responseType: 'blob' }),
   getLoans: () => api.get('/customer/loans'),
   applyLoan: (data) => api.post('/customer/loans/apply', data),
   getCards: () => api.get('/customer/cards'),
@@ -77,6 +68,18 @@ export const customerAPI = {
   cardAction: (data) => api.post('/customer/cards/action', data),
   uploadKyc: (data) => api.post('/customer/kyc/upload', data),
   getKycDocuments: () => api.get('/customer/kyc/documents'),
+  /**
+   * Returns the PDF as a blob URL the caller can use in an <iframe> or <embed>.
+   * Usage:
+   *   const url = await customerAPI.getKycDocumentViewUrl(docId);
+   *   // pass `url` to an iframe src, then call URL.revokeObjectURL(url) on unmount
+   */
+  getKycDocumentViewUrl: async (documentId) => {
+    const response = await api.get(`/customer/kyc/documents/${documentId}/view`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(response.data);
+  },
   getNotifications: (page = 0) => api.get(`/customer/notifications?page=${page}&size=10`),
   markNotificationsRead: () => api.post('/customer/notifications/read-all'),
 };
