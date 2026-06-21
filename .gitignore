@@ -45,3 +45,5 @@ Thumbs.db
 *.iml
 .vscode/
 tempCodeRunnerFile.exe
+
+backend/target/
