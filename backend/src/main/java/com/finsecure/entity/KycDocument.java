@@ -75,6 +75,6 @@ public class KycDocument {
     }
 
     public enum DocumentStatus {
-        UPLOADED, UNDER_REVIEW, APPROVED, REJECTED
+        UPLOADED, UNDER_REVIEW, APPROVED, REJECTED, SUPERSEDED
     }
 }
