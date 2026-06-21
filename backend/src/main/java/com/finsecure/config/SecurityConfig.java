@@ -58,8 +58,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:3000",
             "http://localhost:3001",
-            "https://fin-secure-customerportal.vercel.app",
-            "https://employeeportalfin-secure.vercel.app"
+            "https://*.vercel.app"
+            
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
