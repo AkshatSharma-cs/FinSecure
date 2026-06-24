@@ -1,4 +1,15 @@
 import axios from 'axios';
+import {
+  DEMO_MODE,
+  seedDemoSession,
+  getDemoDashboardPayload,
+  getDemoCustomersPayload,
+  getDemoCustomerByAccountPayload,
+  getDemoPendingKycPayload,
+  getDemoPendingLoansPayload,
+  getDemoAllEmployeesPayload,
+  createDemoResponse,
+} from './mockData';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -30,7 +41,25 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
 };
 
-export const employeeAPI = {
+const demoApi = {
+  getDashboard: () => Promise.resolve(createDemoResponse(getDemoDashboardPayload())),
+  getCustomers: (page = 0, search = '', sort = 'createdAt', dir = 'desc') => Promise.resolve(createDemoResponse(getDemoCustomersPayload(page, search, sort, dir))),
+  getCustomerByAccount: (accountNumber) => Promise.resolve(createDemoResponse(getDemoCustomerByAccountPayload(accountNumber))),
+  getPendingKyc: (page = 0) => Promise.resolve(createDemoResponse(getDemoPendingKycPayload(page))),
+  verifyKyc: () => Promise.resolve(createDemoResponse({ success: true })),
+  getPendingLoans: (page = 0) => Promise.resolve(createDemoResponse(getDemoPendingLoansPayload(page))),
+  reviewLoan: () => Promise.resolve(createDemoResponse({ success: true })),
+  depositToAccount: () => Promise.resolve(createDemoResponse({ success: true })),
+  getKycDocumentViewUrl: async (documentId) => {
+    const blob = new Blob([`FinSecure demo KYC document ${documentId}`], { type: 'application/pdf' });
+    return URL.createObjectURL(blob);
+  },
+  getAllEmployees: () => Promise.resolve(createDemoResponse(getDemoAllEmployeesPayload())),
+  createEmployee: () => Promise.resolve(createDemoResponse({ success: true })),
+  deleteEmployee: () => Promise.resolve(createDemoResponse({ success: true })),
+};
+
+const employeeApiBase = {
   getDashboard: () => api.get('/employee/dashboard'),
   getCustomers: (page = 0, search = '', sort = 'createdAt', dir = 'desc') =>
     api.get(`/employee/customers?page=${page}&size=20&sort=${sort}&dir=${dir}${search ? '&search=' + search : ''}`),
@@ -60,5 +89,11 @@ export const employeeAPI = {
   createEmployee: (data) => api.post('/employee/create', data),
   deleteEmployee: (id) => api.delete(`/employee/${id}`),
 };
+
+export const employeeAPI = DEMO_MODE ? demoApi : employeeApiBase;
+
+if (DEMO_MODE) {
+  seedDemoSession();
+}
 
 export default api;
