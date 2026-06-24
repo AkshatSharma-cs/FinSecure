@@ -1,4 +1,25 @@
 import axios from 'axios';
+import {
+  DEMO_MODE,
+  DEMO_TOKEN,
+  seedDemoSession,
+  getDemoDashboardPayload,
+  getDemoProfilePayload,
+  getDemoTransactionsPayload,
+  getDemoCardsPayload,
+  getDemoLoansPayload,
+  getDemoKycDocumentsPayload,
+  getDemoNotificationsPayload,
+  createDemoResponse,
+  applyDemoAccountCreation,
+  applyDemoDeposit,
+  applyDemoTransfer,
+  applyDemoCardAction,
+  applyDemoIssueCard,
+  applyDemoUploadKyc,
+  markDemoNotificationsRead,
+  createDemoDocumentUrl,
+} from './mockData';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -17,6 +38,29 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+const demoApi = {
+  getProfile: () => Promise.resolve(createDemoResponse(getDemoProfilePayload())),
+  getDashboard: () => Promise.resolve(createDemoResponse(getDemoDashboardPayload())),
+  createAccount: (data) => Promise.resolve(createDemoResponse(applyDemoAccountCreation(data.accountType))),
+  transfer: (data) => Promise.resolve(createDemoResponse(applyDemoTransfer(data.fromAccountNumber, data.toAccountNumber, data.amount, data.description))),
+  getTransactions: (accountId, page = 0, filters = {}) => Promise.resolve(createDemoResponse(getDemoTransactionsPayload(accountId, page, filters))),
+  downloadStatement: () => Promise.resolve({ data: new Blob(['demo-statement'], { type: 'application/pdf' }) }),
+  getLoans: () => Promise.resolve(createDemoResponse(getDemoLoansPayload())),
+  applyLoan: () => Promise.resolve(createDemoResponse({ success: true })),
+  getCards: () => Promise.resolve(createDemoResponse(getDemoCardsPayload())),
+  deposit: (data) => Promise.resolve(createDemoResponse(applyDemoDeposit(data.accountNumber, data.amount, data.description))),
+  issueDebitCard: (accountId) => Promise.resolve(createDemoResponse(applyDemoIssueCard({ accountId }))),
+  issueVirtualDebitCard: (accountId) => Promise.resolve(createDemoResponse(applyDemoIssueCard({ accountId }))),
+  issueCreditCard: (data) => Promise.resolve(createDemoResponse(applyDemoIssueCard({ accountId: data.accountId, scheme: data.scheme, variant: data.variant }))),
+  issuePrepaidCard: (data) => Promise.resolve(createDemoResponse(applyDemoIssueCard({ accountId: data.accountId, loadAmount: data.loadAmount, variant: data.variant }))),
+  cardAction: (data) => Promise.resolve(createDemoResponse(applyDemoCardAction(data.cardId, data.action))),
+  uploadKyc: (data) => Promise.resolve(createDemoResponse(applyDemoUploadKyc(data))),
+  getKycDocuments: () => Promise.resolve(createDemoResponse(getDemoKycDocumentsPayload())),
+  getKycDocumentViewUrl: async (documentId) => createDemoDocumentUrl(documentId),
+  getNotifications: (page = 0) => Promise.resolve(createDemoResponse(getDemoNotificationsPayload(page))),
+  markNotificationsRead: () => Promise.resolve(createDemoResponse(markDemoNotificationsRead())),
+};
 
 // Response interceptor - handle 401
 api.interceptors.response.use(
@@ -41,7 +85,7 @@ export const authAPI = {
 };
 
 // Customer APIs
-export const customerAPI = {
+const customerApiBase = {
   getProfile: () => api.get('/customer/profile'),
   getDashboard: () => api.get('/customer/dashboard'),
   createAccount: (data) => api.post('/customer/accounts', data),
@@ -83,5 +127,13 @@ export const customerAPI = {
   getNotifications: (page = 0) => api.get(`/customer/notifications?page=${page}&size=10`),
   markNotificationsRead: () => api.post('/customer/notifications/read-all'),
 };
+
+export const customerAPI = DEMO_MODE
+  ? demoApi
+  : customerApiBase;
+
+if (DEMO_MODE) {
+  seedDemoSession();
+}
 
 export default api;

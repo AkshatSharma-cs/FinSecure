@@ -68,7 +68,7 @@ function LoanApprovals() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f8fafc' }}>
                 <tr>
-                  {['Loan Number', 'Type', 'Amount', 'EMI', 'Tenure', 'Purpose', 'Status', 'Applied', 'Actions'].map(h => (
+                  {['Loan Number', 'Account', 'Type', 'Amount', 'EMI', 'Tenure', 'Purpose', 'Status', 'Applied', 'Actions'].map(h => (
                     <th key={h} style={{ padding: '14px 16px', textAlign: 'left', fontSize: 12, color: '#475569', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                   ))}
                 </tr>
@@ -77,6 +77,7 @@ function LoanApprovals() {
                 {loans.map(loan => (
                   <tr key={loan.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 13, color: '#334155' }}>{loan.loanNumber}</td>
+                    <td style={{ padding: '14px 16px', fontFamily: 'monospace', fontSize: 13, color: '#334155' }}>{loan.accountNumber || '—'}</td>
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{loan.loanType.replace('_', ' ')}</td>
                     <td style={{ padding: '14px 16px', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{fmt(loan.principalAmount)}</td>
                     <td style={{ padding: '14px 16px', fontSize: 13, color: '#475569' }}>{fmt(loan.emiAmount)}/mo</td>
@@ -124,6 +125,7 @@ function LoanApprovals() {
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: 16, marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
                   { label: 'Loan Number', value: selectedLoan.loanNumber },
+                  { label: 'Account Number', value: selectedLoan.accountNumber || '—' },
                   { label: 'Type', value: selectedLoan.loanType },
                   { label: 'Amount', value: fmt(selectedLoan.principalAmount) },
                   { label: 'Rate', value: selectedLoan.interestRate + '% p.a.' },

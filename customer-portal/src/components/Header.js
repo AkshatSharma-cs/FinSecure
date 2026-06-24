@@ -34,7 +34,7 @@ function Header() {
       </nav>
 
       <div className="header-right">
-        <span className="header-user">Hello, {user.username || 'Customer'}</span>
+        <span className="header-user">Hello, {user.firstName || user.username || 'Customer'}</span>
         <button className="btn-logout" onClick={handleLogout}>Sign Out</button>
       </div>
     </header>
